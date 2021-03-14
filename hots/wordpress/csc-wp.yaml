@@ -1,0 +1,239 @@
+heat_template_version: 2013-05-23
+description: WordPress on CentOS 7 Linux x86-64
+parameters:
+  KEY_name:
+    type: string
+    label: SSH Key Name
+    description: SSH Key Name
+  NETWORK_name:
+    type: string
+    label: NETWORK name
+    description: Network name
+    default: cloudnet
+  SUBNET_name:
+    type: string
+    label: Subnet name or ID
+    description: Subnet name
+    default: cloudsubnet
+  PUBLIC_network:
+    type: string
+    label: Public network name or ID
+    description: Public network
+    default: iiclan
+  INSTANCE_flavor:
+    type: string
+    label: Instance_flavor
+    description: Instance flavor
+    default: 'm1.medium'
+    constraints:
+      - allowed_values: [ 'm1.medium', 'm1.large' ]
+        description: INSTANCE_flavor must be one of m1.medium, m1.large
+  INSTANCE_image:
+    type: string
+    label: Image to use for the instance
+    description: Image to use for the instance
+    default: 'CentOS 7-2003 Linux '
+    constraints:
+      - allowed_values: [ 'CentOS 7-2003 Linux ' ]
+        description: INSTANCE_image must be CentOS 7-2003 Linux
+  BOOTVOLUME_size:
+    type: number
+    label: Size of the volume to be created
+    description: Size of the volume to be created
+    default: 20
+    constraints:
+      - range: { min: 1, max: 1024 }
+        description: VOLUME_size must be between 1 and 1024 GB
+  DBVOLUME_size:
+    type: number
+    label: Size of the volume to be created
+    description: Size of the volume to be created
+    default: 5
+    constraints:
+      - range: { min: 1, max: 1024 }
+        description: VOLUME_size must be between 1 and 1024 GB
+  DBVOLUME_type:
+    type: string
+    label: Volume type
+    description: Volume type
+    default: standard
+    constraints:
+      - allowed_values: [ 'standard', 'flash' ]
+        description: DBVOLUME_type must be standard
+  DB_name:
+    type: string
+    label: Database Name
+    description: Database name
+    default: mydb
+    constraints:
+      - length: { min: 1, max: 64 }
+        description: DB_name must be between 1 and 64 characters
+      - allowed_pattern: '[a-zA-Z][a-zA-Z0-9]*'
+        description: DB_name must begin with a letter and contain only alphanumeric characters
+  DB_username:
+    type: string
+    label: The database admin account username
+    description: The database admin account username
+    default: dba
+    constraints:
+      - length: { min: 1, max: 16 }
+        description: DB_username must be between 1 and 16 characters
+      - allowed_pattern: '[a-zA-Z][a-zA-Z0-9]*'
+        description: DB_username must begin with a letter and contain only alphanumeric characters
+  DB_password:
+    type: string
+    label: The database admin account password
+    description: The database admin account password
+    hidden: true
+    constraints:
+      - length: { min: 1, max: 16 }
+        description: DB_password must be between 1 and 16 characters
+      - allowed_pattern: '[a-zA-Z0-9]*'
+        description: DB_password must contain only alphanumeric characters
+  DB_root_password:
+    type: string
+    label: Root password for MariaDB
+    description: Root password for MariaDB
+    hidden: true
+    constraints:
+      - length: { min: 1, max: 16 }
+        description: DB_root_password must be between 1 and 16 characters
+      - allowed_pattern: '[a-zA-Z0-9]*'
+        description: DB_root_password must contain only alphanumeric characters
+resources:
+  APPINST:
+    type: OS::Nova::Server
+    properties:
+      block_device_mapping: [{"volume_id": { get_resource: BOOTVOL },
+                              "delete_on_termination": true, 
+                              "device_name": "vda"}]
+      flavor: { get_param: INSTANCE_flavor }
+      key_name: { get_param: KEY_name }
+      networks:
+        - port: { get_resource: APPINST_port }
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          params:
+            LOGDIR: /var/log/os-cloud
+            LOGFILE: /var/log/os-cloud/os-hot.log
+            IMAGE: { get_param: INSTANCE_image }
+            DB_rootpassword: { get_param: DB_root_password }
+            DB_name: { get_param: DB_name }
+            DB_user: { get_param: DB_username }
+            DB_password: { get_param: DB_password }
+          template: |
+            #!/bin/bash
+            sudo mkdir -p LOGDIR
+            sudo echo > LOGFILE
+            sudo echo "OS Cloud - Image: IMAGE" > LOGFILE
+            sudo setenforce 0
+            sudo lsblk | grep vdb 2>&1 >> LOGFILE
+            if [ $? -ne 0 ]; then
+            for i in {1..10}; do
+            sudo echo "Waiting for volume 5 sek." >> LOGFILE
+            sleep 5
+            sudo lsblk | grep vdb 2>&1 >> LOGFILE
+            if [ $? -eq 0 ]; then
+            sudo echo "Volume vdb present" >> LOGFILE
+            ISVOLUMEB=1
+            break
+            fi
+            sudo echo "Volume vdb not present" >> LOGFILE
+            ISVOLUMEB=0
+            done
+            else
+            echo "Volume vdb present" >> LOGFILE
+            ISVOLUMEB=1
+            fi
+            sudo echo "---------- Starting WordPress deployment ----------" >> LOGFILE
+            sudo yum install -y lvm2 epel-release wget rsync screen telnet
+            sudo echo "Creating vg and lv" >> LOGFILE
+            if [ $ISVOLUMEB -ne 0 ]; then
+            sudo pvcreate /dev/vdb 2>&1 >> LOGFILE
+            sudo vgcreate dbvg /dev/vdb 2>&1 >> LOGFILE
+            sudo lvcreate -l+100%FREE -n dblv dbvg 2>&1 >> LOGFILE
+            sudo echo "Creating /var/lib/mysql mounting point"
+            sudo mkdir -p /var/lib/mysql 2>&1 >> LOGFILE
+            sudo echo "Creating and mounting filesystem" >> LOGFILE
+            sudo mkfs.xfs -f /dev/mapper/dbvg-dblv 2>&1 >> LOGFILE
+            sudo echo "/dev/mapper/dbvg-dblv /var/lib/mysql xfs defaults 0 0" >> /etc/fstab
+            sudo mount /dev/mapper/dbvg-dblv /var/lib/mysql 2>&1 >> LOGFILE
+            sudo df -ah 2>&1 >> LOGFILE
+            fi
+            sudo echo "Updating firewall rules" >> LOGFILE
+            sudo firewall-cmd --zone=public --add-service=mysql --permanent
+            sudo firewall-cmd --zone=public --add-service=mysql
+            sudo firewall-cmd --zone=public --add-service=http --permanent
+            sudo firewall-cmd --zone=public --add-service=http
+            sudo firewall-cmd --zone=public --add-service=https --permanent
+            sudo firewall-cmd --zone=public --add-service=https
+            sudo echo "Installing software" >> LOGFILE
+            sudo yum -y install mariadb mariadb-server
+            sudo touch /var/log/mariadb/mariadb.log
+            sudo chown mysql.mysql /var/log/mariadb/mariadb.log
+            sudo systemctl enable mariadb.service
+            sudo systemctl start mariadb.service
+            mysqladmin -u root password DB_rootpassword
+            cat << EOF | mysql -u root --password=DB_rootpassword
+            CREATE DATABASE DB_name;
+            GRANT ALL PRIVILEGES ON DB_name.* TO 'DB_user'@'localhost'
+            IDENTIFIED BY 'DB_password';
+            FLUSH PRIVILEGES;
+            EXIT
+            EOF
+            sudo yum -y install httpd wordpress 2>&1 >> LOGFILE
+            sudo sed -i "/Deny from All/d" /etc/httpd/conf.d/wordpress.conf 2>&1 >> LOGFILE
+            sudo sed -i "s/Require local/Require all granted/" /etc/httpd/conf.d/wordpress.conf 2>&1 >> LOGFILE
+            sudo sed -i s/database_name_here/DB_name/ /etc/wordpress/wp-config.php 2>&1 >> LOGFILE
+            sudo sed -i s/username_here/DB_user/      /etc/wordpress/wp-config.php 2>&1 >> LOGFILE
+            sudo sed -i s/password_here/DB_password/  /etc/wordpress/wp-config.php 2>&1 >> LOGFILE
+            sudo systemctl enable httpd.service 2>&1 >> LOGFILE
+            sudo systemctl start httpd.service 2>&1 >> LOGFILE
+            sudo echo "---------- WordPress deployed ----------" >> LOGFILE
+  APPINST_port:
+    type: OS::Neutron::Port
+    properties:
+      network: { get_param: NETWORK_name }
+      fixed_ips:
+        - subnet: { get_param: SUBNET_name }
+      security_groups: [{ get_resource: APPINST_security_group }]
+  APPINST_floating_ip:
+    type: OS::Neutron::FloatingIP
+    properties:
+      floating_network: { get_param: PUBLIC_network }
+      port_id: { get_resource: APPINST_port }
+  APPINST_security_group:
+    type: OS::Neutron::SecurityGroup
+    properties:
+      description: Allow traffic to Wordpress
+      name: wordpress-http
+      rules: [
+        {remote_ip_prefix: 0.0.0.0/0,
+        protocol: tcp,
+        port_range_min: 80,
+        port_range_max: 80}]
+  BOOTVOL:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: BOOTVOLUME_size }
+      image: { get_param: INSTANCE_image }
+  DBVOL:
+    type: OS::Cinder::Volume
+    properties:
+      size: { get_param: DBVOLUME_size }
+      volume_type: { get_param: DBVOLUME_type }
+  DBVOLATTACH:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      volume_id: { get_resource: DBVOL }
+      instance_uuid: { get_resource: APPINST }
+      mountpoint: /dev/vdb
+outputs:
+  WebsiteURL:
+    description: URL to Wordpress
+    value:
+      str_replace:
+        template: http://host/wordpress
+        params:
+          host: { get_attr: [APPINST_floating_ip, floating_ip_address] }
