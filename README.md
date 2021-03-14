@@ -1,6 +1,6 @@
-# Cloud Service Catalog
+# Katalog aplikacji w chmurze
 
-## Generic applications
+## Podstawowe aplikacje
 
 [WordPress](hots/wordpress/README.md)
 
@@ -12,7 +12,7 @@ MongoDB
 
 Apache and PHP
 
-## Container environments
+## Środowiska kontenerowe
 
 Kubernetes cluster
 
@@ -20,11 +20,13 @@ OKD cluster
 
 Docker Swarm cluster
 
-## HPC applications
+## Aplikacje HPC
 
-OpenHPC cluster
+Klaster OpenHPC
 
-OpenFOAM on Linux
+Klaster MPI ze SLURM
+
+OpenFOAM
 
 GROMACS
 
@@ -32,14 +34,12 @@ NAMD
 
 MM5
 
-MPI Cluster with SLURM
+## Uruchom własną aplikację używając naszych szablonów
 
-## Build your own appications
+### Terraform
 
-### Terraform templates
+### Ansible
 
-### Ansible templates
+### HOT
 
-### HOT tamplates
-
-### Jenkins templates
+### Jenkins
