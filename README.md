@@ -2,7 +2,7 @@
 
 ## Generic applications
 
-[WordPress](hots/wordpress/READMY.md)
+[WordPress](hots/wordpress/README.md)
 
 LAMP stack
 
