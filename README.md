@@ -28,6 +28,8 @@ OpenFOAM on Linux
 
 GROMACS
 
+NAMD
+
 MM5
 
 MPI Cluster with SLURM
