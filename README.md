@@ -22,6 +22,8 @@ PyTorch
 
 Spark
 
+Caffe2
+
 ## Środowiska kontenerowe
 
 Kubernetes cluster
