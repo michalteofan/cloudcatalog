@@ -12,6 +12,16 @@ MongoDB
 
 Apache and PHP
 
+## Aplkacje AI/ML
+
+Jupyter Notebook
+
+TensorFlow
+
+PyTorch
+
+Spark
+
 ## Środowiska kontenerowe
 
 Kubernetes cluster
