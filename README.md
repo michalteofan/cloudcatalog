@@ -12,7 +12,7 @@ MongoDB
 
 Apache and PHP
 
-## Aplkacje AI/ML
+## Aplikacje AI/ML
 
 Jupyter Notebook
 
