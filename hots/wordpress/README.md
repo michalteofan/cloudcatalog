@@ -6,6 +6,8 @@ Aenean consectetur rutrum turpis, at egestas eros congue nec. Morbi laoreet tell
 
 # How to use the template
 
+HOT URL: https://raw.githubusercontent.com/michalteofan/cloudcatalog/main/hots/wordpress/csc-wp.yaml
+
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum eros ex, laoreet tempor efficitur quis, scelerisque non ligula. Etiam commodo maximus tortor. Cras non eleifend nulla, sit amet ultrices magna. Pellentesque scelerisque quam nibh, non ultricies urna volutpat sed. Duis vitae convallis velit. Phasellus finibus commodo pharetra. Vivamus erat orci, fermentum nec sem in, hendrerit sollicitudin ligula. Sed porttitor quam scelerisque, vehicula tellus sed, tincidunt orci. Suspendisse eget rhoncus lectus. 
 
 ## Template parameters
